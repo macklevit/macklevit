@@ -23,6 +23,11 @@ TOP_COUNT = 10
 # MetaTrader; distorcia o card (87% de todo o MQL5 vinha só dele).
 EXCLUDED_REPOS = {"macklevit/metatrader_scripts"}
 
+# Ponderação do github-readme-stats (size_weight/count_weight = 0.5):
+# score = bytes^0.5 * repos^0.5, para um repo gigante não dominar o card.
+SIZE_WEIGHT = 0.5
+COUNT_WEIGHT = 0.5
+
 # Cores canônicas do github/linguist; cinza para linguagem fora da tabela.
 LINGUIST_COLORS: dict[str, str] = {
     "MQL5": "#4A76B8",
@@ -81,28 +86,40 @@ def fetch_owned_repo_full_names(token: str) -> list[str]:
         page += 1
 
 
-def sum_language_bytes(token: str, repo_full_names: list[str]) -> dict[str, int]:
-    """Soma os bytes por linguagem em todos os repositórios informados."""
-    totals: dict[str, int] = {}
+def collect_language_usage(token: str, repo_full_names: list[str]) -> dict[str, tuple[int, int]]:
+    """Devolve, por linguagem, ``(bytes somados, nº de repositórios que a usam)``."""
+    usage: dict[str, tuple[int, int]] = {}
     for full_name in repo_full_names:
         languages = _api_get(f"/repos/{full_name}/languages", token)
         if not isinstance(languages, dict):
             raise TypeError(f"linguagens inesperadas em {full_name}: {languages!r}")
         for language, size in languages.items():
-            totals[language] = totals.get(language, 0) + size
-    return totals
+            total, repo_count = usage.get(language, (0, 0))
+            usage[language] = (total + size, repo_count + 1)
+    return usage
 
 
-def top_language_shares(totals: dict[str, int], count: int) -> list[tuple[str, float]]:
+def weighted_language_scores(usage: dict[str, tuple[int, int]]) -> dict[str, float]:
+    """Pondera bytes e nº de repositórios: ``bytes^0.5 * repos^0.5``.
+
+    Exemplo: ``weighted_language_scores({"Go": (400, 4)}) -> {"Go": 40.0}``
+    """
+    return {
+        language: (size**SIZE_WEIGHT) * (repo_count**COUNT_WEIGHT)
+        for language, (size, repo_count) in usage.items()
+    }
+
+
+def top_language_shares(scores: dict[str, float], count: int) -> list[tuple[str, float]]:
     """Devolve as ``count`` maiores linguagens com fração normalizada (soma 1.0).
 
-    Exemplo: ``top_language_shares({"Python": 75, "Go": 25}, 2) -> [("Python", 0.75), ("Go", 0.25)]``
+    Exemplo: ``top_language_shares({"Python": 75.0, "Go": 25.0}, 2) -> [("Python", 0.75), ("Go", 0.25)]``
     """
-    if not totals:
-        raise ValueError("nenhum byte de linguagem encontrado; esperado dict não vazio")
-    ranked = sorted(totals.items(), key=lambda pair: -pair[1])[:count]
-    shown_total = sum(size for _, size in ranked)
-    return [(language, size / shown_total) for language, size in ranked]
+    if not scores:
+        raise ValueError("nenhuma linguagem encontrada; esperado dict não vazio")
+    ranked = sorted(scores.items(), key=lambda pair: -pair[1])[:count]
+    shown_total = sum(score for _, score in ranked)
+    return [(language, score / shown_total) for language, score in ranked]
 
 
 def language_color(language: str) -> str:
@@ -173,7 +190,8 @@ def main() -> None:
     if not token:
         raise SystemExit("defina GITHUB_TOKEN com um PAT de escopo `repo`")
     repo_full_names = fetch_owned_repo_full_names(token)
-    shares = top_language_shares(sum_language_bytes(token, repo_full_names), TOP_COUNT)
+    usage = collect_language_usage(token, repo_full_names)
+    shares = top_language_shares(weighted_language_scores(usage), TOP_COUNT)
     output_path = os.path.join(os.path.dirname(__file__), "..", "top-langs.svg")
     with open(output_path, "w", encoding="utf-8") as output:
         output.write(render_card_svg(shares))
