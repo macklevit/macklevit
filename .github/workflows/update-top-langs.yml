@@ -1,0 +1,34 @@
+name: Atualizar card de linguagens
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # toda segunda, 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Precisa de um PAT clássico com escopo `repo` salvo como secret STATS_PAT
+      # (Settings > Secrets and variables > Actions). O GITHUB_TOKEN padrão só
+      # enxerga este repositório, então sem o secret o card não é atualizado.
+      - name: Gerar top-langs.svg
+        env:
+          GITHUB_TOKEN: ${{ secrets.STATS_PAT }}
+        run: |
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "Secret STATS_PAT ausente; mantendo o SVG atual."
+            exit 0
+          fi
+          python3 scripts/generate_top_langs.py
+
+      - name: Commitar se houver mudança
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add top-langs.svg
+          git diff --cached --quiet || { git commit -m "Atualiza card de linguagens"; git push; }
