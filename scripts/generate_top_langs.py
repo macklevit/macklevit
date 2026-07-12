@@ -17,7 +17,11 @@ API_BASE = "https://api.github.com"
 CARD_WIDTH = 350
 BAR_WIDTH = 300
 BAR_GAP = 2
-TOP_COUNT = 8
+TOP_COUNT = 10
+
+# Coleção de scripts com muito código de terceiros/biblioteca padrão do
+# MetaTrader; distorcia o card (87% de todo o MQL5 vinha só dele).
+EXCLUDED_REPOS = {"macklevit/metatrader_scripts"}
 
 # Cores canônicas do github/linguist; cinza para linguagem fora da tabela.
 LINGUIST_COLORS: dict[str, str] = {
@@ -57,7 +61,7 @@ def _api_get(path: str, token: str) -> object:
 
 
 def fetch_owned_repo_full_names(token: str) -> list[str]:
-    """Lista ``dono/repo`` de todos os repositórios próprios, sem forks.
+    """Lista ``dono/repo`` dos repositórios próprios, sem forks nem excluídos.
 
     Exemplo: ``fetch_owned_repo_full_names(token) -> ["macklevit/macklevit", ...]``
     """
@@ -67,7 +71,11 @@ def fetch_owned_repo_full_names(token: str) -> list[str]:
         batch = _api_get(f"/user/repos?per_page=100&affiliation=owner&page={page}", token)
         if not isinstance(batch, list):
             raise TypeError(f"resposta inesperada de /user/repos: {batch!r}; esperada lista")
-        names += [repo["full_name"] for repo in batch if not repo["fork"]]
+        names += [
+            repo["full_name"]
+            for repo in batch
+            if not repo["fork"] and repo["full_name"] not in EXCLUDED_REPOS
+        ]
         if len(batch) < 100:
             return names
         page += 1
