@@ -1,35 +1,17 @@
-<svg width="350" height="193" viewBox="0 0 350 193" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linguagens mais usadas, incluindo repositórios privados">
+<svg width="350" height="109" viewBox="0 0 350 109" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linguagens mais usadas, incluindo repositórios privados">
   <style>
     .title { font: 600 18px 'Segoe UI', Ubuntu, sans-serif; fill: #70a5fd; }
     .lang { font: 400 11px 'Segoe UI', Ubuntu, sans-serif; fill: #38bdae; }
   </style>
-  <rect x="0.5" y="0.5" width="349" height="192" rx="4.5" fill="#1a1b27" stroke="#e4e2e2" stroke-opacity="0.3" />
+  <rect x="0.5" y="0.5" width="349" height="108" rx="4.5" fill="#1a1b27" stroke="#e4e2e2" stroke-opacity="0.3" />
   <text x="25" y="33" class="title">Linguagens mais usadas</text>
   <defs>
     <clipPath id="bar-round"><rect x="25" y="0" width="300" height="8" rx="4" /></clipPath>
   </defs>
   <g transform="translate(0, 47)" clip-path="url(#bar-round)">
-    <rect x="25.0" y="0" width="112.1" height="8" fill="#3572A5" />
-    <rect x="139.1" y="0" width="45.1" height="8" fill="#4A76B8" />
-    <rect x="186.3" y="0" width="40.0" height="8" fill="#f1e05a" />
-    <rect x="228.3" y="0" width="27.2" height="8" fill="#e34c26" />
-    <rect x="257.5" y="0" width="21.8" height="8" fill="#663399" />
-    <rect x="281.3" y="0" width="9.6" height="8" fill="#62A8D6" />
-    <rect x="292.9" y="0" width="7.5" height="8" fill="#3178c6" />
-    <rect x="302.4" y="0" width="7.2" height="8" fill="#00ADD8" />
-    <rect x="311.6" y="0" width="5.8" height="8" fill="#DA5B0B" />
-    <rect x="319.4" y="0" width="5.6" height="8" fill="#4F5D95" />
+    <rect x="25.0" y="0" width="300.0" height="8" fill="#3572A5" />
   </g>
   <g>
-    <circle cx="30" cy="74" r="5" fill="#3572A5" /><text x="41" y="78" class="lang">Python 39.77%</text>
-    <circle cx="30" cy="95" r="5" fill="#4A76B8" /><text x="41" y="99" class="lang">MQL5 16.00%</text>
-    <circle cx="30" cy="116" r="5" fill="#f1e05a" /><text x="41" y="120" class="lang">JavaScript 14.19%</text>
-    <circle cx="30" cy="137" r="5" fill="#e34c26" /><text x="41" y="141" class="lang">HTML 9.66%</text>
-    <circle cx="30" cy="158" r="5" fill="#663399" /><text x="41" y="162" class="lang">CSS 7.73%</text>
-    <circle cx="193" cy="74" r="5" fill="#62A8D6" /><text x="204" y="78" class="lang">MQL4 3.40%</text>
-    <circle cx="193" cy="95" r="5" fill="#3178c6" /><text x="204" y="99" class="lang">TypeScript 2.64%</text>
-    <circle cx="193" cy="116" r="5" fill="#00ADD8" /><text x="204" y="120" class="lang">Go 2.55%</text>
-    <circle cx="193" cy="137" r="5" fill="#DA5B0B" /><text x="204" y="141" class="lang">Jupyter Notebook 2.07%</text>
-    <circle cx="193" cy="158" r="5" fill="#4F5D95" /><text x="204" y="162" class="lang">PHP 1.99%</text>
+    <circle cx="30" cy="74" r="5" fill="#3572A5" /><text x="41" y="78" class="lang">Python 100.00%</text>
   </g>
 </svg>
