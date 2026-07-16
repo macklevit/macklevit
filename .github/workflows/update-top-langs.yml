@@ -5,6 +5,10 @@ on:
     - cron: "0 6 * * 1" # toda segunda, 06:00 UTC
   workflow_dispatch:
 
+# Runs simultâneos brigavam no push ("rejected / fetch first"); um por vez.
+concurrency:
+  group: update-top-langs
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -31,4 +35,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add top-langs.svg
-          git diff --cached --quiet || { git commit -m "Atualiza card de linguagens"; git push; }
+          # Rebase antes do push: a main pode ter avançado desde o checkout.
+          git diff --cached --quiet || { git commit -m "Atualiza card de linguagens"; git pull --rebase origin main; git push; }
