@@ -45,5 +45,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add top-langs.svg stats.svg
-          # Rebase antes do push: a main pode ter avançado desde o checkout.
-          git diff --cached --quiet || { git commit -m "Atualiza cards do perfil"; git pull --rebase origin main; git push; }
+          # Rebase antes do push: a branch pode ter avançado desde o checkout.
+          # GITHUB_REF_NAME e não "main": com workflow_dispatch em outra branch,
+          # rebasear na main conflita e derruba o run.
+          git diff --cached --quiet || { git commit -m "Atualiza cards do perfil"; git pull --rebase origin "$GITHUB_REF_NAME"; git push origin HEAD:"$GITHUB_REF_NAME"; }
