@@ -9,27 +9,27 @@
     <clipPath id="bar-round"><rect x="25" y="0" width="300" height="8" rx="4" /></clipPath>
   </defs>
   <g transform="translate(0, 47)" clip-path="url(#bar-round)">
-    <rect x="25.0" y="0" width="104.1" height="8" fill="#3572A5" />
-    <rect x="131.1" y="0" width="45.8" height="8" fill="#f1e05a" />
-    <rect x="178.9" y="0" width="40.4" height="8" fill="#4A76B8" />
-    <rect x="221.3" y="0" width="25.6" height="8" fill="#e34c26" />
-    <rect x="248.9" y="0" width="22.9" height="8" fill="#663399" />
-    <rect x="273.7" y="0" width="11.2" height="8" fill="#3178c6" />
-    <rect x="286.9" y="0" width="11.0" height="8" fill="#00ADD8" />
-    <rect x="299.9" y="0" width="8.0" height="8" fill="#62A8D6" />
-    <rect x="310.0" y="0" width="6.8" height="8" fill="#4F5D95" />
+    <rect x="25.0" y="0" width="106.2" height="8" fill="#3572A5" />
+    <rect x="133.2" y="0" width="45.2" height="8" fill="#f1e05a" />
+    <rect x="180.4" y="0" width="40.2" height="8" fill="#4A76B8" />
+    <rect x="222.6" y="0" width="25.2" height="8" fill="#e34c26" />
+    <rect x="249.8" y="0" width="22.5" height="8" fill="#663399" />
+    <rect x="274.3" y="0" width="11.0" height="8" fill="#3178c6" />
+    <rect x="287.4" y="0" width="10.9" height="8" fill="#00ADD8" />
+    <rect x="300.2" y="0" width="7.9" height="8" fill="#62A8D6" />
+    <rect x="310.2" y="0" width="6.7" height="8" fill="#4F5D95" />
     <rect x="318.8" y="0" width="6.2" height="8" fill="#858585" />
   </g>
   <g>
-    <circle cx="30" cy="74" r="5" fill="#3572A5" /><text x="41" y="78" class="lang">Python 36.91%</text>
-    <circle cx="30" cy="95" r="5" fill="#f1e05a" /><text x="41" y="99" class="lang">JavaScript 16.25%</text>
-    <circle cx="30" cy="116" r="5" fill="#4A76B8" /><text x="41" y="120" class="lang">MQL5 14.32%</text>
-    <circle cx="30" cy="137" r="5" fill="#e34c26" /><text x="41" y="141" class="lang">HTML 9.07%</text>
-    <circle cx="30" cy="158" r="5" fill="#663399" /><text x="41" y="162" class="lang">CSS 8.10%</text>
-    <circle cx="193" cy="74" r="5" fill="#3178c6" /><text x="204" y="78" class="lang">TypeScript 3.97%</text>
-    <circle cx="193" cy="95" r="5" fill="#00ADD8" /><text x="204" y="99" class="lang">Go 3.91%</text>
-    <circle cx="193" cy="116" r="5" fill="#62A8D6" /><text x="204" y="120" class="lang">MQL4 2.85%</text>
-    <circle cx="193" cy="137" r="5" fill="#4F5D95" /><text x="204" y="141" class="lang">PHP 2.41%</text>
-    <circle cx="193" cy="158" r="5" fill="#858585" /><text x="204" y="162" class="lang">PowerShell 2.21%</text>
+    <circle cx="30" cy="74" r="5" fill="#3572A5" /><text x="41" y="78" class="lang">Python 37.68%</text>
+    <circle cx="30" cy="95" r="5" fill="#f1e05a" /><text x="41" y="99" class="lang">JavaScript 16.02%</text>
+    <circle cx="30" cy="116" r="5" fill="#4A76B8" /><text x="41" y="120" class="lang">MQL5 14.24%</text>
+    <circle cx="30" cy="137" r="5" fill="#e34c26" /><text x="41" y="141" class="lang">HTML 8.94%</text>
+    <circle cx="30" cy="158" r="5" fill="#663399" /><text x="41" y="162" class="lang">CSS 7.99%</text>
+    <circle cx="193" cy="74" r="5" fill="#3178c6" /><text x="204" y="78" class="lang">TypeScript 3.92%</text>
+    <circle cx="193" cy="95" r="5" fill="#00ADD8" /><text x="204" y="99" class="lang">Go 3.85%</text>
+    <circle cx="193" cy="116" r="5" fill="#62A8D6" /><text x="204" y="120" class="lang">MQL4 2.81%</text>
+    <circle cx="193" cy="137" r="5" fill="#4F5D95" /><text x="204" y="141" class="lang">PHP 2.37%</text>
+    <circle cx="193" cy="158" r="5" fill="#858585" /><text x="204" y="162" class="lang">PowerShell 2.18%</text>
   </g>
 </svg>
