@@ -6,6 +6,11 @@ dono do deploy, nunca enxergou repositórios privados: ``count_private=true``
 não fazia efeito nenhum. Aqui o PAT é o seu, então
 ``restrictedContributionsCount`` traz também os commits privados.
 
+O total de commits é somado ano a ano desde a criação da conta, e não pela
+API de busca (``search/commits``, que é o que ``include_all_commits`` usa):
+a busca não indexa commit privado direito e devolvia 864 onde a soma por
+janelas devolve 1037.
+
 Uso:
     GITHUB_TOKEN=<PAT com escopo repo> python3 scripts/generate_stats.py
 """
@@ -13,6 +18,7 @@ Uso:
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 
 from github_card import CARD_WIDTH, THEME, graphql_query, render_card
 
@@ -20,17 +26,15 @@ ROW_FIRST_Y = 68
 ROW_SPACING = 25
 BOTTOM_PADDING = 25
 ICON_SIZE = 16
+ABBREVIATE_FROM = 10_000
 
-STATS_QUERY = """
+PROFILE_QUERY = """
 query {
   viewer {
+    createdAt
     repositories(ownerAffiliations: OWNER, isFork: false, first: 100) {
       totalCount
       nodes { stargazerCount }
-    }
-    contributionsCollection {
-      totalCommitContributions
-      restrictedContributionsCount
     }
     pullRequests { totalCount }
     issues { totalCount }
@@ -70,28 +74,83 @@ ICON_PATHS: dict[str, str] = {
 # (chave do ícone, rótulo, chave em fetch_profile_stats)
 STAT_ROWS: list[tuple[str, str, str]] = [
     ("star", "Estrelas recebidas", "stars"),
-    ("commit", "Commits (último ano)", "commits"),
+    ("commit", "Commits (total)", "commits"),
     ("pull-request", "Pull requests", "pull_requests"),
     ("issue", "Issues", "issues"),
     ("repo", "Repositórios", "repositories"),
 ]
 
 
-def fetch_profile_stats(token: str) -> dict[str, int]:
-    """Busca as métricas do perfil, somando commits públicos e privados.
+def calendar_year_ranges(
+    created_at: datetime, today: datetime
+) -> list[tuple[str, str]]:
+    """Fatia a vida da conta em janelas ISO de no máximo um ano.
 
-    Exemplo: ``fetch_profile_stats(token) -> {"stars": 2, "commits": 717, ...}``
+    ``contributionsCollection`` recusa intervalos maiores que 12 meses, então o
+    total histórico só sai somando ano-calendário por ano-calendário.
+
+    Exemplo: ``calendar_year_ranges(dt(2024, 5, 1), dt(2025, 3, 2))`` -> duas janelas
     """
-    viewer = graphql_query(STATS_QUERY, token)["viewer"]
+    if created_at > today:
+        raise ValueError(f"conta criada em {created_at} depois de hoje ({today})")
+    ranges: list[tuple[str, str]] = []
+    for year in range(created_at.year, today.year + 1):
+        start = max(created_at, datetime(year, 1, 1, tzinfo=timezone.utc))
+        end = min(today, datetime(year, 12, 31, 23, 59, 59, tzinfo=timezone.utc))
+        ranges.append(
+            (start.strftime("%Y-%m-%dT%H:%M:%SZ"), end.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        )
+    return ranges
+
+
+def build_commits_query(ranges: list[tuple[str, str]]) -> str:
+    """Monta uma query com um alias de ``contributionsCollection`` por janela."""
+    if not ranges:
+        raise ValueError("nenhuma janela de datas; esperada ao menos uma")
+    aliases = "\n".join(
+        f'    y{index}: contributionsCollection(from: "{start}", to: "{end}") '
+        "{ totalCommitContributions restrictedContributionsCount }"
+        for index, (start, end) in enumerate(ranges)
+    )
+    return "query {\n  viewer {\n" + aliases + "\n  }\n}"
+
+
+def sum_commit_contributions(buckets: dict[str, object]) -> int:
+    """Soma commits públicos e privados de todas as janelas da query.
+
+    Exemplo: ``sum_commit_contributions({"y0": {"totalCommitContributions": 2,
+    "restrictedContributionsCount": 3}}) -> 5``
+    """
+    total = 0
+    for alias, bucket in buckets.items():
+        if not isinstance(bucket, dict):
+            raise TypeError(f"janela {alias} inesperada: {bucket!r}; esperado dict")
+        total += (
+            bucket["totalCommitContributions"] + bucket["restrictedContributionsCount"]
+        )
+    return total
+
+
+def fetch_total_commits(token: str, created_at: datetime, today: datetime) -> int:
+    """Conta todos os commits desde a criação da conta, privados inclusive."""
+    query = build_commits_query(calendar_year_ranges(created_at, today))
+    return sum_commit_contributions(graphql_query(query, token)["viewer"])
+
+
+def fetch_profile_stats(token: str, today: datetime) -> dict[str, int]:
+    """Busca as métricas do perfil, com o total histórico de commits.
+
+    Exemplo: ``fetch_profile_stats(token, agora) -> {"stars": 2, "commits": 1037, ...}``
+    """
+    viewer = graphql_query(PROFILE_QUERY, token)["viewer"]
     if not isinstance(viewer, dict):
         raise TypeError(f"viewer inesperado: {viewer!r}; esperado dict")
-    contributions = viewer["contributionsCollection"]
+    created_at = datetime.strptime(viewer["createdAt"], "%Y-%m-%dT%H:%M:%SZ")
     repositories = viewer["repositories"]
     return {
         "stars": sum(repo["stargazerCount"] for repo in repositories["nodes"]),
-        "commits": (
-            contributions["totalCommitContributions"]
-            + contributions["restrictedContributionsCount"]
+        "commits": fetch_total_commits(
+            token, created_at.replace(tzinfo=timezone.utc), today
         ),
         "pull_requests": viewer["pullRequests"]["totalCount"],
         "issues": viewer["issues"]["totalCount"],
@@ -100,13 +159,16 @@ def fetch_profile_stats(token: str) -> dict[str, int]:
 
 
 def format_count(value: int) -> str:
-    """Abrevia milhares como o github-readme-stats faz.
+    """Abrevia só a partir de 10 mil, onde o número deixaria de caber.
 
-    Exemplo: ``format_count(1234) -> "1.2k"``; ``format_count(717) -> "717"``
+    O github-readme-stats corta em 1000, mas aí "1037 commits" viraria "1.0k"
+    perdendo precisão à toa: a coluna da direita comporta cinco dígitos.
+
+    Exemplo: ``format_count(1037) -> "1037"``; ``format_count(12345) -> "12.3k"``
     """
     if value < 0:
         raise ValueError(f"contagem negativa: {value}; esperado inteiro >= 0")
-    if value < 1000:
+    if value < ABBREVIATE_FROM:
         return str(value)
     return f"{value / 1000:.1f}k"
 
@@ -155,7 +217,7 @@ def main() -> None:
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token:
         raise SystemExit("defina GITHUB_TOKEN com um PAT de escopo `repo`")
-    stats = fetch_profile_stats(token)
+    stats = fetch_profile_stats(token, datetime.now(timezone.utc))
     output_path = os.path.join(os.path.dirname(__file__), "..", "stats.svg")
     with open(output_path, "w", encoding="utf-8") as output:
         output.write(render_stats_svg(stats))
