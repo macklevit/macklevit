@@ -12,19 +12,33 @@ from __future__ import annotations
 import re
 import unittest
 import xml.etree.ElementTree as ElementTree
+from datetime import datetime, timezone
 
-from generate_stats import STAT_ROWS, format_count, render_stats_svg
+from generate_stats import (
+    STAT_ROWS,
+    build_commits_query,
+    calendar_year_ranges,
+    format_count,
+    render_stats_svg,
+    sum_commit_contributions,
+)
 from generate_top_langs import render_card_svg, top_language_shares
 from github_card import CARD_WIDTH, render_card
 
+ISO = "%Y-%m-%dT%H:%M:%SZ"
 SAMPLE_STATS = {
     "stars": 2,
-    "commits": 717,
+    "commits": 1037,
     "pull_requests": 171,
     "issues": 0,
     "repositories": 27,
 }
 SAMPLE_SHARES = [("Python", 0.6), ("Go", 0.3), ("MQL5", 0.1)]
+
+
+def _utc(year: int, month: int, day: int) -> datetime:
+    """Data UTC à meia-noite, para as janelas de contribuição."""
+    return datetime(year, month, day, tzinfo=timezone.utc)
 
 
 def _svg_height(svg: str) -> int:
@@ -53,18 +67,67 @@ class RenderCardTest(unittest.TestCase):
 
 
 class FormatCountTest(unittest.TestCase):
-    def test_mantem_valores_abaixo_de_mil(self) -> None:
+    def test_mantem_exato_abaixo_do_corte(self) -> None:
         self.assertEqual(format_count(0), "0")
         self.assertEqual(format_count(717), "717")
-        self.assertEqual(format_count(999), "999")
+        self.assertEqual(format_count(1037), "1037")
+        self.assertEqual(format_count(9999), "9999")
 
-    def test_abrevia_milhares(self) -> None:
-        self.assertEqual(format_count(1000), "1.0k")
-        self.assertEqual(format_count(1234), "1.2k")
+    def test_abrevia_a_partir_de_dez_mil(self) -> None:
+        self.assertEqual(format_count(10_000), "10.0k")
+        self.assertEqual(format_count(12_345), "12.3k")
 
     def test_recusa_valor_negativo(self) -> None:
         with self.assertRaisesRegex(ValueError, "-1"):
             format_count(-1)
+
+
+class CalendarYearRangesTest(unittest.TestCase):
+    def test_uma_janela_por_ano_calendario(self) -> None:
+        ranges = calendar_year_ranges(_utc(2023, 10, 17), _utc(2026, 8, 10))
+        self.assertEqual(len(ranges), 4)
+
+    def test_primeira_janela_comeca_na_criacao_da_conta(self) -> None:
+        ranges = calendar_year_ranges(_utc(2023, 10, 17), _utc(2026, 8, 10))
+        self.assertEqual(ranges[0][0], "2023-10-17T00:00:00Z")
+
+    def test_ultima_janela_termina_hoje(self) -> None:
+        ranges = calendar_year_ranges(_utc(2023, 10, 17), _utc(2026, 8, 10))
+        self.assertEqual(ranges[-1][1], "2026-08-10T00:00:00Z")
+
+    def test_nenhuma_janela_passa_de_um_ano(self) -> None:
+        """A API recusa intervalos maiores que 12 meses."""
+        for start, end in calendar_year_ranges(_utc(2015, 3, 4), _utc(2026, 8, 10)):
+            span = datetime.strptime(end, ISO) - datetime.strptime(start, ISO)
+            self.assertLessEqual(
+                span.days, 366, f"janela {start}..{end} passa de um ano"
+            )
+
+    def test_recusa_conta_criada_no_futuro(self) -> None:
+        with self.assertRaisesRegex(ValueError, "depois de hoje"):
+            calendar_year_ranges(_utc(2030, 1, 1), _utc(2026, 8, 10))
+
+
+class CommitsQueryTest(unittest.TestCase):
+    def test_um_alias_por_janela(self) -> None:
+        query = build_commits_query([("a", "b"), ("c", "d")])
+        self.assertIn("y0: contributionsCollection", query)
+        self.assertIn("y1: contributionsCollection", query)
+
+    def test_recusa_lista_vazia(self) -> None:
+        with self.assertRaisesRegex(ValueError, "nenhuma janela"):
+            build_commits_query([])
+
+    def test_soma_publicos_e_privados_de_todas_as_janelas(self) -> None:
+        buckets = {
+            "y0": {"totalCommitContributions": 2, "restrictedContributionsCount": 3},
+            "y1": {"totalCommitContributions": 10, "restrictedContributionsCount": 0},
+        }
+        self.assertEqual(sum_commit_contributions(buckets), 15)
+
+    def test_recusa_janela_malformada(self) -> None:
+        with self.assertRaisesRegex(TypeError, "y0"):
+            sum_commit_contributions({"y0": None})
 
 
 class RenderStatsSvgTest(unittest.TestCase):
@@ -73,8 +136,8 @@ class RenderStatsSvgTest(unittest.TestCase):
         for _, label, _ in STAT_ROWS:
             self.assertIn(label, svg)
 
-    def test_mostra_commits_publicos_mais_privados(self) -> None:
-        self.assertIn(">717<", render_stats_svg(SAMPLE_STATS))
+    def test_mostra_o_total_de_commits(self) -> None:
+        self.assertIn(">1037<", render_stats_svg(SAMPLE_STATS))
 
     def test_recusa_metrica_faltando(self) -> None:
         incompleto = {key: 1 for key in SAMPLE_STATS if key != "commits"}
