@@ -7,14 +7,13 @@ um card SVG no estilo "compact top languages" com tema tokyonight.
 Uso:
     GITHUB_TOKEN=<PAT com escopo repo> python3 scripts/generate_top_langs.py
 """
+
 from __future__ import annotations
 
-import json
 import os
-import urllib.request
 
-API_BASE = "https://api.github.com"
-CARD_WIDTH = 350
+from github_card import CARD_WIDTH, THEME, api_get, render_card
+
 BAR_WIDTH = 300
 BAR_GAP = 2
 TOP_COUNT = 10
@@ -48,22 +47,6 @@ LINGUIST_COLORS: dict[str, str] = {
 }
 FALLBACK_COLOR = "#858585"
 
-# Tema tokyonight do github-readme-stats, para casar com o card de stats.
-THEME = {"bg": "#1a1b27", "title": "#70a5fd", "text": "#38bdae"}
-
-
-def _api_get(path: str, token: str) -> object:
-    """Faz GET autenticado na API do GitHub e devolve o JSON decodificado.
-
-    Exemplo: ``_api_get("/user/repos?page=1", token)``
-    """
-    request = urllib.request.Request(
-        f"{API_BASE}{path}",
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
-    )
-    with urllib.request.urlopen(request) as response:
-        return json.load(response)
-
 
 def fetch_owned_repo_full_names(token: str) -> list[str]:
     """Lista ``dono/repo`` dos repositórios próprios, sem forks nem excluídos.
@@ -73,9 +56,13 @@ def fetch_owned_repo_full_names(token: str) -> list[str]:
     names: list[str] = []
     page = 1
     while True:
-        batch = _api_get(f"/user/repos?per_page=100&affiliation=owner&page={page}", token)
+        batch = api_get(
+            f"/user/repos?per_page=100&affiliation=owner&page={page}", token
+        )
         if not isinstance(batch, list):
-            raise TypeError(f"resposta inesperada de /user/repos: {batch!r}; esperada lista")
+            raise TypeError(
+                f"resposta inesperada de /user/repos: {batch!r}; esperada lista"
+            )
         names += [
             repo["full_name"]
             for repo in batch
@@ -86,11 +73,13 @@ def fetch_owned_repo_full_names(token: str) -> list[str]:
         page += 1
 
 
-def collect_language_usage(token: str, repo_full_names: list[str]) -> dict[str, tuple[int, int]]:
+def collect_language_usage(
+    token: str, repo_full_names: list[str]
+) -> dict[str, tuple[int, int]]:
     """Devolve, por linguagem, ``(bytes somados, nº de repositórios que a usam)``."""
     usage: dict[str, tuple[int, int]] = {}
     for full_name in repo_full_names:
-        languages = _api_get(f"/repos/{full_name}/languages", token)
+        languages = api_get(f"/repos/{full_name}/languages", token)
         if not isinstance(languages, dict):
             raise TypeError(f"linguagens inesperadas em {full_name}: {languages!r}")
         for language, size in languages.items():
@@ -110,7 +99,9 @@ def weighted_language_scores(usage: dict[str, tuple[int, int]]) -> dict[str, flo
     }
 
 
-def top_language_shares(scores: dict[str, float], count: int) -> list[tuple[str, float]]:
+def top_language_shares(
+    scores: dict[str, float], count: int
+) -> list[tuple[str, float]]:
     """Devolve as ``count`` maiores linguagens com fração normalizada (soma 1.0).
 
     Exemplo: ``top_language_shares({"Python": 75.0, "Go": 25.0}, 2) -> [("Python", 0.75), ("Go", 0.25)]``
@@ -164,14 +155,8 @@ def render_card_svg(shares: list[tuple[str, float]]) -> str:
     """Renderiza o card completo no estilo compact do github-readme-stats."""
     rows_per_column = (len(shares) + 1) // 2
     height = 78 + rows_per_column * 21 + 10
-    return f"""<svg width="{CARD_WIDTH}" height="{height}" viewBox="0 0 {CARD_WIDTH} {height}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linguagens mais usadas, incluindo repositórios privados">
-  <style>
-    .title {{ font: 600 18px 'Segoe UI', Ubuntu, sans-serif; fill: {THEME['title']}; }}
-    .lang {{ font: 400 11px 'Segoe UI', Ubuntu, sans-serif; fill: {THEME['text']}; }}
-  </style>
-  <rect x="0.5" y="0.5" width="{CARD_WIDTH - 1}" height="{height - 1}" rx="4.5" fill="{THEME['bg']}" stroke="#e4e2e2" stroke-opacity="0.3" />
-  <text x="25" y="33" class="title">Linguagens mais usadas</text>
-  <defs>
+    extra_css = f".lang {{ font: 400 11px 'Segoe UI', Ubuntu, sans-serif; fill: {THEME['text']}; }}"
+    body = f"""  <defs>
     <clipPath id="bar-round"><rect x="25" y="0" width="{BAR_WIDTH}" height="8" rx="4" /></clipPath>
   </defs>
   <g transform="translate(0, 47)" clip-path="url(#bar-round)">
@@ -179,9 +164,14 @@ def render_card_svg(shares: list[tuple[str, float]]) -> str:
   </g>
   <g>
     {_legend_items(shares)}
-  </g>
-</svg>
-"""
+  </g>"""
+    return render_card(
+        height,
+        "Linguagens mais usadas",
+        "Linguagens mais usadas, incluindo repositórios privados",
+        body,
+        extra_css,
+    )
 
 
 def main() -> None:
@@ -195,7 +185,9 @@ def main() -> None:
     output_path = os.path.join(os.path.dirname(__file__), "..", "top-langs.svg")
     with open(output_path, "w", encoding="utf-8") as output:
         output.write(render_card_svg(shares))
-    print(f"top-langs.svg gerado com {len(shares)} linguagens de {len(repo_full_names)} repositórios")
+    print(
+        f"top-langs.svg gerado com {len(shares)} linguagens de {len(repo_full_names)} repositórios"
+    )
 
 
 if __name__ == "__main__":

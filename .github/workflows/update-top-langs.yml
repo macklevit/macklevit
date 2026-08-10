@@ -1,4 +1,7 @@
-name: Atualizar card de linguagens
+name: Atualizar cards do perfil
+
+# O arquivo continua chamando update-top-langs.yml para não perder o histórico
+# de execuções, mas hoje ele gera os dois cards do README (linguagens e stats).
 
 on:
   schedule:
@@ -17,23 +20,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # unittest é da stdlib: nada para instalar antes de rodar.
+      - name: Rodar testes dos geradores
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
       # Precisa de um PAT clássico com escopo `repo` salvo como secret STATS_PAT
       # (Settings > Secrets and variables > Actions). O GITHUB_TOKEN padrão só
-      # enxerga este repositório, então sem o secret o card não é atualizado.
-      - name: Gerar top-langs.svg
+      # enxerga este repositório, então sem o secret os cards ficariam vazios.
+      # Falha alto de propósito: antes o step saía com 0 e o card envelhecia em
+      # silêncio, que foi exatamente como o card de stats quebrou sem ninguém ver.
+      - name: Gerar os cards SVG
         env:
           GITHUB_TOKEN: ${{ secrets.STATS_PAT }}
         run: |
           if [ -z "$GITHUB_TOKEN" ]; then
-            echo "Secret STATS_PAT ausente; mantendo o SVG atual."
-            exit 0
+            echo "::error::Secret STATS_PAT ausente ou expirado; renove em https://github.com/settings/tokens"
+            exit 1
           fi
           python3 scripts/generate_top_langs.py
+          python3 scripts/generate_stats.py
 
       - name: Commitar se houver mudança
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add top-langs.svg
+          git add top-langs.svg stats.svg
           # Rebase antes do push: a main pode ter avançado desde o checkout.
-          git diff --cached --quiet || { git commit -m "Atualiza card de linguagens"; git pull --rebase origin main; git push; }
+          git diff --cached --quiet || { git commit -m "Atualiza cards do perfil"; git pull --rebase origin main; git push; }
